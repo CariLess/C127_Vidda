@@ -5,48 +5,66 @@ import time
 import pandas as pd
 
 # Enlace a NASA Exoplanet
-START_URL = "https://exoplanets.nasa.gov/discovery/exoplanet-catalog/"
+START_URL = "https://exoplanets.nasa.gov/exoplanet-catalog/"
 
 # Controlador web
-browser = webdriver.Chrome("/Users/cariless/Downloads/C127_Vidda/chromedriver.exe")
+browser = webdriver.Chrome("/Users/cariless/Downloads/C127/chromedriver.exe")
 browser.get(START_URL)
 
 time.sleep(10)
 
-planets_data=[]
+planets_data = []
 
 # Definir el método de extracción de datos para Exoplanet
 def scrape():
-    for i in range(0,10):
-        print(f'Extrayendo página {i+1}...')
+    for i in range(0,2):
+        print(f'Extrayendo página {i+1} ...' )
+        
         # Objeto BeautifulSoup
         soup = BeautifulSoup(browser.page_source, "html.parser")
 
+        # Verificar el número de página
+        current_page_num = int(soup.find_all("input",attrs={"class", "page_num"})[0].get("value"))
+
+        if current_page_num < i:
+            browser.find_element(by=By.XPATH, value='//*[@id="primary_column"]/footer/div/div/div/nav/span[2]/a').click()
+        elif current_page_num > i:
+            browser.find_element(by=By.XPATH, value='//*[@id="primary_column"]/footer/div/div/div/nav/span[1]/a').click()
+        else: 
+            break
         # Bucle para encontrar los elementos usando XPATH
-        for ul_tag in soup.find_all("ul", attrs={"class","exoplanet"}):
+        for ul_tag in soup.find_all("ul", attrs={"class", "exoplanet"}):
+
             li_tags = ul_tag.find_all("li")
 
-            temp_list= []
+            temp_list = []
 
             for index, li_tag in enumerate(li_tags):
-                if index ==0:
+                if index == 0:                   
                     temp_list.append(li_tag.find_all("a")[0].contents[0])
                 else:
                     try:
                         temp_list.append(li_tag.contents[0])
-                    except: 
+                    except:
                         temp_list.append("")
+            hiperlink_li_tag = li_tags[0]
+            temp_list.append("https://exoplanets.nasa.gov" +hiperlink_li_tag.find_all("a", href =True)[0]["href"])
 
             planets_data.append(temp_list)
-            # Encontrar todos los elementos en la página y hacer clic para desplazarse a la siguiente
+        # Encontrar todos los elementos en la página y hacer clic para desplazarse a la siguiente
+        browser.find_element(by=By.XPATH, value='//*[@id="primary_column"]/footer/div/div/div/nav/span[2]/a').click()
 
 
     print(planets_data[1])
 
 # Llamada del método
 scrape()
-
+           
 # Definir los encabezados
+headers = ["name", "light_years_from_earth", "planet_mass", "stellar_magnitude", "discovery_date","hyperlink"]
 
+
+planet_df_1 = pd.DataFrame(planets_data, columns=headers)
 
 # Convertir a CSV
+planet_df_1.to_csv('updated_scraped_data.csv',index=True, index_label="id")
